@@ -1,5 +1,5 @@
 
-const mysql = require('mysql2/promise');
+const mysql = require('mysql2');
 const util = require('util');
 
 class employee_db {
@@ -9,7 +9,9 @@ class employee_db {
   }
 
   async connect() {
-    this.connection = await util.promisify(mysql.createConnection)(this.config);
+   // this.connection = await util.promisify(mysql.createConnection)(this.config);
+    //this.connection = await mysql.createConnection(this.config);
+    this.connection = await mysql.createConnection(this.config).promise();
   }
 
   async disconnect() {

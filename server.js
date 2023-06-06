@@ -1,6 +1,7 @@
 
 const inquirer = require('inquirer');
 const employee_db = require('./queries.js');
+const consoleTable = require('console.table');
 
 const config = {
   host: 'localhost',
@@ -65,74 +66,149 @@ async function startApp() {
 async function viewAllDepartments(db) {
   const departments = await db.getAllDepartments();
 
-  // Define the column headers
-  const headers = ['ID', 'Department'];
-
-  // Create an array of arrays containing the data rows
-  const rows = departments.map((department) => [department.id, department.name]);
-
-  printTable(headers, rows);
+  console.table(departments);
 }
 
 async function viewAllRoles(db) {
   const roles = await db.getAllRoles();
 
-  // Define the column headers
-  const headers = ['ID', 'Title', 'Salary', 'Department'];
-
-  // Create an array of arrays containing the data rows
-  const rows = roles.map((role) => [role.id, role.title, role.salary, role.department]);
-
-  printTable(headers, rows);
+  console.table(roles);
 }
 
 async function viewAllEmployees(db) {
   const employees = await db.getAllEmployees();
 
-  // Define the column headers
-  const headers = ['ID', 'First Name', 'Last Name', 'Role', 'Department', 'Salary', 'Manager'];
-
-  // Create an array of arrays containing the data rows
-  const rows = employees.map((employee) => [
-    employee.id,
-    employee.first_name,
-    employee.last_name,
-    employee.role,
-    employee.department,
-    employee.salary,
-    employee.manager,
-  ]);
-
-  printTable(headers, rows);
+  console.table(employees);
 }
 
-// Rest of the code...
+async function addDepartment(db) {
+    const { departmentName } = await inquirer.prompt({
+      name: 'departmentName',
+      type: 'input',
+      message: 'Enter the name of the department:',
+    });
+  
+    // Add the department to the database
+    await db.addDepartment(departmentName);
+  
+    console.log('Department added successfully.');
+  }
 
-function padString(str, width) {
-  const padding = width - str.length;
-  return padding > 0 ? str + ' '.repeat(padding) : str;
-}
+  async function addRole(db) {
+    const departments = await db.getAllDepartments();
+  
+    const roleData = await inquirer.prompt([
+      {
+        name: 'title',
+        type: 'input',
+        message: 'Enter the title of the role:',
+      },
+      {
+        name: 'salary',
+        type: 'input',
+        message: 'Enter the salary for the role:',
+        validate: (input) => {
+          if (!isNaN(input) && parseFloat(input) >= 0) {
+            return true;
+          }
+          return 'Please enter a valid salary (a non-negative number).';
+        },
+      },
+      {
+        name: 'departmentId',
+        type: 'list',
+        message: 'Select the department for the role:',
+        choices: departments.map((department) => ({
+          name: department.name,
+          value: department.id,
+        })),
+      },
+    ]);
+  
+    // Add the role to the database
+    await db.addRole(roleData.title, roleData.salary, roleData.departmentId);
+  
+    console.log('Role added successfully.');
+  }
 
-function printTable(headers, rows) {
-  // Calculate the maximum width for each column
-  const columnWidths = headers.map((header, index) => {
-    const maxLength = Math.max(header.length, ...rows.map((row) => String(row[index]).length));
-    return maxLength + 2; // Add padding
-  });
-
-  // Generate the horizontal line separator
-  const separator = columnWidths.map((width) => '-'.repeat(width)).join('-+-');
-
-  // Print the table headers
-  console.log(headers.map((header, index) => padString(header, columnWidths[index])).join(' | '));
-
-  // Print the separator
-  console.log(separator);
-
-  // Print the rows
-  rows.forEach((row) => {
-    console.log(row.map((cell, index) => padString(cell, columnWidths[index])).join(' | '));
-  });
-}
+  async function addEmployee(db) {
+    const roles = await db.getAllRoles();
+    const employees = await db.getAllEmployees();
+  
+    const employeeData = await inquirer.prompt([
+      {
+        name: 'firstName',
+        type: 'input',
+        message: "Enter the employee's first name:",
+      },
+      {
+        name: 'lastName',
+        type: 'input',
+        message: "Enter the employee's last name:",
+      },
+      {
+        name: 'roleId',
+        type: 'list',
+        message: "Select the employee's role:",
+        choices: roles.map((role) => ({
+          name: role.title,
+          value: role.id,
+        })),
+      },
+      {
+        name: 'managerId',
+        type: 'list',
+        message: "Select the employee's manager:",
+        choices: [
+          { name: 'None', value: null },
+          ...employees.map((employee) => ({
+            name: `${employee.first_name} ${employee.last_name}`,
+            value: employee.id,
+          })),
+        ],
+      },
+    ]);
+  
+    // Add the employee to the database
+    await db.addEmployee(
+      employeeData.firstName,
+      employeeData.lastName,
+      employeeData.roleId,
+      employeeData.managerId
+    );
+  
+    console.log('Employee added successfully.');
+  }
+  
+  async function updateEmployeeRole(db) {
+    const employees = await db.getAllEmployees();
+    const roles = await db.getAllRoles();
+  
+    const employeeData = await inquirer.prompt([
+      {
+        name: 'employeeId',
+        type: 'list',
+        message: 'Select the employee whose role you want to update:',
+        choices: employees.map((employee) => ({
+          name: `${employee.first_name} ${employee.last_name}`,
+          value: employee.id,
+        })),
+      },
+      {
+        name: 'roleId',
+        type: 'list',
+        message: 'Select the new role for the employee:',
+        choices: roles.map((role) => ({
+          name: role.title,
+          value: role.id,
+        })),
+      },
+    ]);
+  
+    // Update the employee's role in the database
+    await db.updateEmployeeRole(employeeData.employeeId, employeeData.roleId);
+  
+    console.log('Employee role updated successfully.');
+  }
 
 startApp();
